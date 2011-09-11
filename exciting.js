@@ -7,6 +7,7 @@ function onOpen() {
 }
 
 var bibliography;
+var updated;
 var results = {};
 var known = {};
 
@@ -25,6 +26,7 @@ function generateBibliography(e) {
   bibliography.setBorderColor("#FFFFFF");
 
   known = loadItems();
+  updated = Math.round(Date.now() / 1000); // current UNIX timestamp
 
   //findResults(body); // needs findText to be working
   parseNodes(body);
@@ -176,7 +178,7 @@ function addBibItem(citation, data){
 
   var cell = row.appendTableCell();
   Logger.log(cell.getAttributes());
-  var title = cell.appendParagraph(data.title);
+  var title = cell.appendParagraph(data["title"] + ". " + data["container-title"] + "  (" + data["date"] + ")"); // TODO: CiteProc
 }
 
 function fetchLocal(key){
@@ -325,14 +327,22 @@ function saveItems(items){
     var item = items[key];
     //var resultKey = Utilities.base64Decode(key);
     var resultKey = Base64.decode(key);
-    data.push([resultKey, Utilities.jsonStringify(item.data)]);
+    data.push([resultKey, Utilities.jsonStringify(item.data), updated, item.data["title"], item.data["date"], item.data["doi"]]);
   }
 
   if (!data.length) return false;
-
+  
+  Logger.log(updated);
+  
+  Logger.log(data.toSource());
+  
   var doc = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = doc.getActiveSheet();
-  var range = sheet.getRange(2, 1, data.length, 2);
+  
+  var lastRow = sheet.getLastRow();
+  sheet.insertRowsAfter(lastRow, data.length);
+  
+  var range = sheet.getRange(lastRow + 1, 1, data.length, 6);
   range.setValues(data);
 }
 
@@ -599,4 +609,3 @@ var Base64 = {
     return string;
   }
 }
-
