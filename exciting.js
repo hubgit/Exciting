@@ -103,7 +103,6 @@ function findResults(node){
     var match = text.match(/^\{\{cite:(\w+:.+?)\}\}$/i);
     if (!match) return false;
     
-    var text = match[0];
     var key = match[1];
 
     //var resultKey = Utilities.base64Encode(key);
@@ -176,7 +175,7 @@ function fetchData(id){
     return fetchByDoi(id);
 
   case "mendeley":
-    return fetchByMendeleyId(id);
+    return fetchMendeleyById(id);
 
   case "test":
     return { "title": "Test Citation" };
