@@ -1,7 +1,7 @@
 WORK IN PROGRESS - THERE ARE BUGS!
 
 1. Create a document. Cite like this: {{cite:doi:10.1016/j.molcel.2009.09.013}}
-2. Create a spreadsheet, named the same as the document but with a " - References" suffix. 
-3, Add the script to the spreadsheet in Tools > Script Editor.
+2. Create a spreadsheet in the same folder, named the same as the document but with a " - References" suffix. 
+3, Add this script to the spreadsheet (Tools > Script Editor).
 4. Run "Generate Bibliography" from the "Exciting" menu in the spreadsheet.
 5. Check your email for a formatted PDF, or your Google Docs trash folder for the formatted document.
