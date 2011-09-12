@@ -28,22 +28,25 @@ function generateBibliography(e) {
   known = loadItems();
   updated = Math.round(Date.now() / 1000); // current UNIX timestamp
 
-  //findResults(body); // needs findText to be working
-  parseNodes(body);
+  findResults(body);
 
   var counter = 1;
   for (var resultsKey in results){
     var item = results[resultsKey];
     Logger.log(item.text);
 
-    //var positions = getPositions(item.text);
+
     var replacement = "[" + counter + "]";
 
     body.replaceText(item.text, replacement);
 
     /*
+    // TODO: could match false positives, but haven't got the offsets of the replacements
+    var positions = getPositions(body, replacement);
     for (var i = 0; i < positions.length; i++){
       var position = positions[i];
+      // TODO: bookmark links to the bibliography items
+      // http://code.google.com/p/google-apps-script-issues/issues/detail?id=803
       position.element.setLinkUrl(position.startOffset, position.startOffset + replacement.length, createUrl(item.key));
     }
     */
@@ -85,26 +88,21 @@ function findDocumentInFolders(docName, folders){
   }
 }
 
-function parseNodes(element){
-  var n = element.getNumChildren();
+function findResults(node){
+  var result = null;
+  
+  do{
+    result = node.findText("{{cite:.+?}}", result);
+    if (!result) break;
+      
+    var startOffset = result.getStartOffset();
+    var endOffset = result.getEndOffsetInclusive();
+    
+    var text = result.getElement().getText().substr(startOffset, (endOffset - startOffset) + 1);
 
-  for (var i = 0; i < n; i++){
-    var node = element.getChild(i);
-    if (typeof node.getNumChildren == "function" && node.getNumChildren()){
-      parseNodes(node);
-    }
-    else if (node.getType() == "TEXT") {
-      matchResults(node);
-    }
-  }
-}
-
-function matchResults(node){
-  var matches = node.getText().match(/\{\{cite:(\w+:.+?)\}\}/gi);
-  if (!matches) return false;
-
-  for (var i = 0; i < matches.length; i++){
-    var match = matches[i].match(/\{\{cite:(\w+:.+?)\}\}/i);
+    var match = text.match(/^\{\{cite:(\w+:.+?)\}\}$/i);
+    if (!match) return false;
+    
     var text = match[0];
     var key = match[1];
 
@@ -117,8 +115,25 @@ function matchResults(node){
       key: key,
       data: fetchData(key)
     };
-  }
+    
+  } while (result);
 }
+
+/*
+function getPositions(body, text){
+  var result = null;
+  var positions = [];
+  
+  do {
+    result = body.findText(text, result);
+    if (!result) break;
+
+    positions.push({ element: result.getElement(), startOffset: result.getStartOffset() });
+  } while (result);
+  
+  return positions;
+}
+*/
 
 function createUrl(key){
   var match = key.match(/^(\w+):(.+)/);
@@ -428,49 +443,6 @@ function saveConfiguration(e) {
   app.close();
   return app;
 }
-
-
-/*
-// needs findText to be working
-function getPositions(text){
-  var result = null;
-  var positions = [];
-  do {
-    result = body.findText(text, result);
-    if (!result) break;
-
-    positions.push({ element: result.getElement(), startOffset: result.getStartOffset() });
-  } while (result);
-}
-*/
-
-/*
-// needs findText to be working
-function findResults(node){
-  var result;
-  var pattern = "\{\{cite:(\w+:.+?)\}\}";
-  do{
-    result = node.findText(pattern, result);
-    if (!result) break;
-
-    var item = {
-      startOffset: result.getStartOffset(),
-      endOffset: result.getEndOffsetInclusive(),
-    };
-
-    item.text = result.getText().substr(item.startOffset, item.endOffset - item.startOffset);
-
-    var match = item.text.match(pattern);
-    item.key = match[1];
-    var key = Utilities.base64Encode(item.key);
-
-    if (typeof results[key] == "undefined"){
-      item.data = fetchData(item.key);
-      results[key] = item;
-    }
-  } while (result);
-}
-*/
 
 /** Base64 to/from strings **/
 
