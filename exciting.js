@@ -32,7 +32,12 @@ function generateBibliography(e) {
   known = loadItems();
   updated = Math.round(Date.now() / 1000); // current UNIX timestamp
 
-  findResults(body);
+  try {
+    findResults(body);
+  }
+  catch (e){
+    return false;
+  }
 
   var counter = 1;
   for (var resultsKey in results){
@@ -209,7 +214,7 @@ function fetchLocal(key){
 
 function fetchByDoi(doi){
   var data;
-  if (isConfigured()) data = fetchMendeleyByDoi(doi);
+  //if (isConfigured()) data = fetchMendeleyByDoi(doi);
   if (!data) data = fetchCrossRefByDoi(doi);
   return data;
 }
@@ -231,7 +236,7 @@ function fetchMendeleyByDoi(doi){
 
   Logger.log("Fetching from Mendeley by DOI: " + doi);
 
-  var options = { "oAuthServiceName": "mendeley", "oAuthUseToken": "never" };
+  var options = { "method": "GET", "oAuthServiceName": "mendeley", "oAuthUseToken": "never" };
   var result = UrlFetchApp.fetch("http://api.mendeley.com/oapi/documents/details/" + encodeURIComponent(doi.replace("/", encodeURIComponent("/"))) + "/?type=doi", options);
   if (result.getResponseCode() != 200) return false;
 
@@ -246,11 +251,12 @@ function fetchMendeleyById(id){
 
   Logger.log("Fetching from Mendeley by id: " + id);
 
-  var options = { "oAuthServiceName": "mendeley", "oAuthUseToken": "always" };
+  var options = { "method": "GET", "oAuthServiceName": "mendeley", "oAuthUseToken": "always" };
   var result = UrlFetchApp.fetch("http://api.mendeley.com/oapi/library/" + encodeURIComponent(id) + "/", options);
   if (result.getResponseCode() != 200) return false;
 
   var data = Utilities.jsonParse(result.getContentText());
+  Logger.log(data);
   if (!data) return false;
 
   return normaliseMendeley(data);
@@ -381,7 +387,7 @@ function isConfigured() {
 }
 
 function setupOAuth(){
-  if (!isConfigured()) configure();
+  if (!isConfigured()) configure(true);
 
   var oauthConfig = UrlFetchApp.addOAuthService("mendeley");
   oauthConfig.setAccessTokenUrl("http://www.mendeley.com/oauth/access_token/");
@@ -401,7 +407,7 @@ function authorizeMendeley() {
   });
 }
 
-function configure() {
+function configure(auth) {
   var doc = SpreadsheetApp.getActiveSpreadsheet();
   var app = UiApp.createApplication().setTitle("Configure Mendeley OAuth");
 
@@ -436,6 +442,8 @@ function configure() {
   dialogPanel.add(saveButton);
   app.add(dialogPanel);
   doc.show(app);
+  
+  if (auth) throw "Keys are required for OAuth requests";
 }
 
 function saveConfiguration(e) {
