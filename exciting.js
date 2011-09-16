@@ -1,3 +1,7 @@
+function onInstall() {
+  onOpen();
+}
+
 function onOpen() {
   var menuEntries = [
     {name: "Generate Bibliography", functionName: "generateBibliography"},
@@ -313,7 +317,7 @@ function loadItems(){
   var sheet = doc.getActiveSheet();
   var rows = sheet.getLastRow() - 1;
 
-  if (!rows) return false;
+  if (rows < 1) return false;
 
   var range = sheet.getRange(2, 1, rows, 2);
   var values = range.getValues();
@@ -353,7 +357,7 @@ function saveItems(items){
   var doc = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = doc.getActiveSheet();
   
-  var lastRow = sheet.getLastRow();
+  var lastRow = Math.max(1, sheet.getLastRow());
   sheet.insertRowsAfter(lastRow, data.length);
   
   var range = sheet.getRange(lastRow + 1, 1, data.length, 6);
