@@ -99,19 +99,19 @@ function findDocumentInFolders(docName, folders){
 
 function findResults(node){
   var result = null;
-  
+
   do{
     result = node.findText("{{cite:.+?}}", result);
     if (!result) break;
-      
+
     var startOffset = result.getStartOffset();
     var endOffset = result.getEndOffsetInclusive();
-    
+
     var text = result.getElement().getText().substr(startOffset, (endOffset - startOffset) + 1);
 
     var match = text.match(/^\{\{cite:(\w+:.+?)\}\}$/i);
     if (!match) return false;
-    
+
     var key = match[1];
 
     //var resultKey = Utilities.base64Encode(key);
@@ -123,7 +123,7 @@ function findResults(node){
       key: key,
       data: fetchData(key)
     };
-    
+
   } while (result);
 }
 
@@ -131,14 +131,14 @@ function findResults(node){
 function getPositions(body, text){
   var result = null;
   var positions = [];
-  
+
   do {
     result = body.findText(text, result);
     if (!result) break;
 
     positions.push({ element: result.getElement(), startOffset: result.getStartOffset() });
   } while (result);
-  
+
   return positions;
 }
 */
@@ -265,13 +265,45 @@ function fetchMendeleyById(id){
 function fetchByUrl(url){
   Logger.log("Fetching URL: " + url);
 
-  var result = UrlFetchApp.fetch(url, { "headers": {"Accept": "application/json" } });
+  var result = UrlFetchApp.fetch(url, { "headers": {"Accept": "application/json, text/html;q=0.8" } });
   if (result.getResponseCode() != 200) return false;
 
-  var data = Utilities.jsonParse(result.getContentText());
+  var content = result.getContentText();
+  if (!content) return false;
+
+  var headers = result.getHeaders();
+  var type = headers["Content-Type"].replace(/;.*/, "");
+
+  var data;
+  switch (type){
+    case "application/json":
+      data = Utilities.jsonParse(content);
+    break;
+
+    case "text/html":
+      var doc = Xml.parse(content, true);
+      var meta = doc.html.head.getElements("meta");
+      var data = {};
+      for (var i in meta){
+        var node = meta[i];
+        var content = node.getAttribute("content");
+        //Logger.log(content.getValue());
+        if (!content.getValue()) continue;
+
+        var property = node.getAttribute("property");
+        if (!property) property = node.getAttribute("name");
+        if (!property) continue;
+
+        property = property.getValue();
+
+        if (!data[property]) data[property] = content.getValue();
+      }
+    break;
+  }
+
   if (!data) return false;
 
-  return normaliseGeneric(data.feed.entry);
+  return normaliseGeneric(data);
 }
 
 function normaliseCrossRef(data){
@@ -312,8 +344,28 @@ function normaliseMendeley(data){
 
 function normaliseGeneric(data){
   Logger.log(data.toSource());
-  // TODO
-  return data;
+
+  var fields = {
+    "title": ["og:title", "dc:title", "title"],
+    "date": ["music:release_date", "dc:date", "date"],
+    "authors": ["music:musician", "dc:creator", "authors"],
+    "doi": ["dc:identifier", "doi"]
+  };
+
+  var item = {};
+  for (var field in fields){
+    var names = fields[field];
+    for (var j in names){
+      var name = names[j];
+      if (data[name]) {
+        item[field] = data[name];
+        break;
+      }
+    }
+  }
+
+  Logger.log(item.toSource());
+  return item;
 }
 
 /** Local spreadshet **/
@@ -355,17 +407,17 @@ function saveItems(items){
   }
 
   if (!data.length) return false;
-  
+
   Logger.log(updated);
-  
+
   Logger.log(data.toSource());
-  
+
   var doc = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = doc.getActiveSheet();
-  
+
   var lastRow = Math.max(1, sheet.getLastRow());
   sheet.insertRowsAfter(lastRow, data.length);
-  
+
   var range = sheet.getRange(lastRow + 1, 1, data.length, 6);
   range.setValues(data);
 }
@@ -442,7 +494,7 @@ function configure(auth) {
   dialogPanel.add(saveButton);
   app.add(dialogPanel);
   doc.show(app);
-  
+
   if (auth) throw "Keys are required for OAuth requests";
 }
 
@@ -592,3 +644,4 @@ var Base64 = {
     return string;
   }
 }
+
